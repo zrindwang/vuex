@@ -5,6 +5,40 @@ Vue.use(Vuex)  //默认会执行当前插件的install方法
 
 //通过 Vue中的一个store 属性 创建一个store实例
 export default new Vuex.Store({
+  modules:{
+    a:{
+      state:{
+        age:'a10',
+      },
+      mutations:{
+        syncChange(){
+          console.log('a-syncChange'); 
+        }
+      }
+    },
+    b:{
+      state:{
+        age:'b100'
+      },
+      mutations:{
+        syncChange(){
+          console.log('a-syncChange'); 
+        }
+      },
+      modules:{
+        c:{
+          state:{
+            age:'c100'
+          },
+          mutations:{
+            syncChange(){
+              console.log('a-syncChange'); 
+            }
+          }
+        }
+      }
+    }
+  },
   state: {//单一数据源
     age:10
   },
@@ -26,7 +60,5 @@ export default new Vuex.Store({
         commit('syncChange',payload)
       }, 1000);
     }
-  },
-  modules: {
   }
 })
