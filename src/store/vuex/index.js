@@ -34,6 +34,52 @@ class ModuleCollection{
         }                                                                                                                                                                                                                                                                                                                                                          
     }   
 }
+function installModule(store,rootState,path,rawModule){ // _raw_children state
+    let getters = rawModule._raw.getters;
+
+    //没有安装我们的状态 
+    if(path.length > 0){//当前的path如果长度大于0 说明有子模块了
+        //vue的响应式原理 不能增加不存在的属性
+        let patentState = path.slice(0,-1).reduce((root,current)=>{ // [b,c]
+            return rootState[current]
+        },rootState)
+        //给这个模块定义的当前模块名字是path的最后一项
+        Vue.set(patentState,path[path.length-1],rawModule.state)//递归给当前状态赋值
+
+    }
+    if(getters){
+        forEach(getters,(getterName,value)=>{
+            if(!store.getters[getterName]){
+                Object.defineProperty(store.getters,getterName,{
+                    get:()=>{
+                        return value(rawModule.state)//模块中的状态 定义getters
+                    }
+                })
+            }
+        })
+    }
+    let mutations = rawModule._raw.mutations; //取用户mutations
+    if(mutations){
+        forEach(mutations,(mutationName,value)=>{//订阅[ffn,fn,fn]
+            let arr = store.mutations[mutationName] ||  (store.mutations[mutationName] = []) ;
+            arr.push((payload)=>{
+                value(rawModule.state,payload)
+            })
+        })
+    }
+    let actions = rawModule._raw.actions; //取用户action
+    if(actions){
+        forEach(actions,(actionName,value)=>{//订阅[ffn,fn,fn]
+            let arr = store.actions[actionName] ||  (store.actions[actionName] = []) ;
+            arr.push((payload)=>{
+                value(store,payload)
+            })
+        })
+    }
+    forEach(rawModule._children,(moduleName,rawModule)=>{
+        installModule(store,rootState,path.concat(moduleName),rawModule)
+    })
+}
 class Store {
     constructor(options) {
         // 获取用户 new 实例时传入的所有属性
@@ -50,9 +96,9 @@ class Store {
         //我需要将用户传入的数据进行格式化操作
 
         this.modules = new ModuleCollection(options);
-        console.log(this.modules);
+        //2.递归的安装模块 store/rootState/path/根模块
+        installModule(this,this.state,[],this.modules.root)
         
-    
 
         // 遍历对象的功能非常常用
         // Object.keys(getters).forEach(getterName=>{
@@ -87,13 +133,21 @@ class Store {
         // })
     }
     commit = (mutationName,payload) => { //es7 写法  这个里面this 永远指向当前Store的实例
-        this.mutations[mutationName](payload);//发布
+        this.mutations[mutationName].forEach(fn=>fn(payload));//发布
     }
     dispatch = (actionName,payload) => {
-        this.actions[actionName](payload)
+        this.actions[actionName].forEach(fn=>fn(payload))
     }
     get state() {
         return this.vm.state
+    }
+    //动态注册模块
+    registerModule(moduleName,module){
+        if(!Array.isArray(moduleName)){
+            moduleName = [moduleName]
+        }
+        this.modules.register(moduleName,module);//格式化数据
+        installModule(this,this.state,[],this.modules.root)
     }
   
 }

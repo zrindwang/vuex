@@ -4,7 +4,7 @@ import Vuex from './vuex'
 Vue.use(Vuex)  //默认会执行当前插件的install方法
 
 //通过 Vue中的一个store 属性 创建一个store实例
-export default new Vuex.Store({
+let store = new Vuex.Store({
   modules:{
     a:{
       state:{
@@ -62,3 +62,9 @@ export default new Vuex.Store({
     }
   }
 })
+store.registerModule('d',{
+  state:{
+    age:'d100'  
+  }
+})
+export default store
