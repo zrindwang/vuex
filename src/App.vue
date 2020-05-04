@@ -17,7 +17,7 @@ export default {
   name: 'app',
   methods:{
     syncChange(){
-      this.$store.commit('syncChange',10)
+      this.$store.commit('b/c/syncChange',10)
     },
     asyncChange(){
       this.$store.dispatch('asyncChange',5)

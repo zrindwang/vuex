@@ -15,6 +15,7 @@ class ModuleCollection{
             _children:{},
             state:rootModule.state
         }
+        rootModule.rawModule = rawModule//双向记录 在用户传入的对象中记录下
         if(!this.root){
             this.root = rawModule
         }else{
@@ -37,7 +38,15 @@ class ModuleCollection{
 function installModule(store,rootState,path,rawModule){ // _raw_children state
     let getters = rawModule._raw.getters;
 
-    //没有安装我们的状态 
+    //根据用户传入的配置 算一下他需不需要加一个前缀
+    let root = store.modules.root // 获取最终整个格式化的结果
+    let namespace = path.reduce((str,current)=>{
+        // root 是整个格式化的
+        // root._children[current] 拿到的是当前通过路径渠道的模块
+        root = root._children[current];//取得对应格式化的结果
+        str = str + (root._raw.namespaced?current+'/':'');
+        return str;// a/b
+    },'')
     if(path.length > 0){//当前的path如果长度大于0 说明有子模块了
         //vue的响应式原理 不能增加不存在的属性
         let patentState = path.slice(0,-1).reduce((root,current)=>{ // [b,c]
@@ -50,7 +59,7 @@ function installModule(store,rootState,path,rawModule){ // _raw_children state
     if(getters){
         forEach(getters,(getterName,value)=>{
             if(!store.getters[getterName]){
-                Object.defineProperty(store.getters,getterName,{
+                Object.defineProperty(store.getters,namespace+getterName,{
                     get:()=>{
                         return value(rawModule.state)//模块中的状态 定义getters
                     }
@@ -61,7 +70,7 @@ function installModule(store,rootState,path,rawModule){ // _raw_children state
     let mutations = rawModule._raw.mutations; //取用户mutations
     if(mutations){
         forEach(mutations,(mutationName,value)=>{//订阅[ffn,fn,fn]
-            let arr = store.mutations[mutationName] ||  (store.mutations[mutationName] = []) ;
+            let arr = store.mutations[namespace+mutationName] ||  (store.mutations[namespace+mutationName] = []) ;
             arr.push((payload)=>{
                 value(rawModule.state,payload)
             })
@@ -147,7 +156,7 @@ class Store {
             moduleName = [moduleName]
         }
         this.modules.register(moduleName,module);//格式化数据
-        installModule(this,this.state,[],this.modules.root)
+        installModule(this,this.state,moduleName,module.rawModule);
     }
   
 }
@@ -157,7 +166,6 @@ const install = (_Vue) => { //vue构造函数
     //只从当前的根实例开始 所有实例的子组件才有$store
     Vue.mixin({//组件创建过程先父后子
         beforeCreate() {
-            console.log('hello')
             //把父组件的store属性 放到每个组件的实例上
             if (this.$options.store) {//根实例
                 this.$store = this.$options.store

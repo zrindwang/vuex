@@ -7,6 +7,7 @@ Vue.use(Vuex)  //默认会执行当前插件的install方法
 let store = new Vuex.Store({
   modules:{
     a:{
+      namespaced:true,
       state:{
         age:'a10',
       },
@@ -17,22 +18,24 @@ let store = new Vuex.Store({
       }
     },
     b:{
+      namespaced:true,
       state:{
         age:'b100'
       },
       mutations:{
         syncChange(){
-          console.log('a-syncChange'); 
+          console.log('b-syncChange'); 
         }
       },
       modules:{
         c:{
+          namespaced:true,
           state:{
             age:'c100'
           },
           mutations:{
             syncChange(){
-              console.log('a-syncChange'); 
+              console.log('c-syncChange'); 
             }
           }
         }
@@ -62,6 +65,7 @@ let store = new Vuex.Store({
     }
   }
 })
+//就是将我们
 store.registerModule('d',{
   state:{
     age:'d100'  
