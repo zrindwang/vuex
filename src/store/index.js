@@ -2,9 +2,37 @@ import Vue from 'vue'
 import Vuex from './vuex'
 
 Vue.use(Vuex)  //默认会执行当前插件的install方法
+function logger(store){
+  let preState = JSON.stringify(store.state)
+  store.subscribe((mutation,newState)=>{
+    console.log(preState);
+    console.log(mutation);
+    console.log(JSON.stringify(newState));
+    preState = JSON.stringify(newState);
+  })
+}
+function persists(store){
+  let local = localStorage.getItem('VUEX:state');
+  if(local){
+    store.replaceState(JSON.parse(local));//会用local替换所有状态
+  }
+  store.subscribe((mutation,state)=>{
+    //需要节流  throttle lodash
+    let local = localStorage.setItem('VUEX:state',JSON.stringify(state));
+    if(local){
 
+    }
+  })
+}
 //通过 Vue中的一个store 属性 创建一个store实例
 let store = new Vuex.Store({
+  plugins:[
+    // logger
+    // createLogger() // 每次提交 希望看到当前状态的变化
+    //vue-persists 实现vuex的数据持久化
+    persists
+
+  ],
   modules:{
     a:{
       namespaced:true,

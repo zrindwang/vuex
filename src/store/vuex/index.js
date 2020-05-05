@@ -35,6 +35,12 @@ class ModuleCollection{
         }                                                                                                                                                                                                                                                                                                                                                          
     }   
 }
+function getState(store,path){
+    let local = path.reduce((newState,current)=>{
+        return newState[current];//每次调用mutation的时候传入的参数都要保证是最新获取的，而不是默认安装的数据
+    },store.state);
+    return local
+}
 function installModule(store,rootState,path,rawModule){ // _raw_children state
     let getters = rawModule._raw.getters;
 
@@ -61,7 +67,7 @@ function installModule(store,rootState,path,rawModule){ // _raw_children state
             if(!store.getters[getterName]){
                 Object.defineProperty(store.getters,namespace+getterName,{
                     get:()=>{
-                        return value(rawModule.state)//模块中的状态 定义getters
+                        return value(getState(store,path))//模块中的状态 定义getters
                     }
                 })
             }
@@ -71,8 +77,9 @@ function installModule(store,rootState,path,rawModule){ // _raw_children state
     if(mutations){
         forEach(mutations,(mutationName,value)=>{//订阅[ffn,fn,fn]
             let arr = store.mutations[namespace+mutationName] ||  (store.mutations[namespace+mutationName] = []) ;
-            arr.push((payload)=>{
-                value(rawModule.state,payload)
+            arr.push((payload)=>{//切片的原因
+                value(getState(store,path),payload);//执行mutations的地方
+                store.subs.forEach(fn=>fn({type:namespace+mutationName,payload:payload},store.state))
             })
         })
     }
@@ -101,14 +108,17 @@ class Store {
         this.getters = {};
         this.mutations = {};
         this.actions = {};
-
+        this.subs = [];
         //我需要将用户传入的数据进行格式化操作
 
         this.modules = new ModuleCollection(options);
         //2.递归的安装模块 store/rootState/path/根模块
         installModule(this,this.state,[],this.modules.root)
         
+        let plugins = options.plugins;
+        plugins.forEach(plugins=>plugins(this));
 
+   
         // 遍历对象的功能非常常用
         // Object.keys(getters).forEach(getterName=>{
         //     Object.defineProperty(this.getters,getterName,{
@@ -140,6 +150,12 @@ class Store {
         //         value(this,payload)
         //     }
         // })
+    }
+    replaceState(newState){
+        this.vm.state = newState;
+    }
+    subscribe(fn){
+        this.subs.push(fn)
     }
     commit = (mutationName,payload) => { //es7 写法  这个里面this 永远指向当前Store的实例
         this.mutations[mutationName].forEach(fn=>fn(payload));//发布
